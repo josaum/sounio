@@ -7,6 +7,7 @@ validated_by: A6
 source_of_truth: docs/governance/topic-registry.v1.json#repo.docs.research.rupture-ord2-alignment-2026-07-25
 -->
 
+
 <!-- docs:status-note:start -->
 > Docs status: `historical`
 > This page is preserved for lineage. Start at [Docs Authority Matrix](../governance/DOCS_AUTHORITY_MATRIX.md) and [docs index](../README.md) for the current canonical surface for this topic.
@@ -81,12 +82,16 @@ Pure Python (Jacobi eigen / SVD on 16×16); no numpy dependency.
 
 ---
 
-## 5. Next scientific step
+## 5. Trained non-sedenion target (done)
 
-Write `make_forward` for a **trained** non-sedenion model (LSTM or S4), run
-alignment + gap(T) over hundreds of paths, and only then ask whether the
-signature predicts long-sequence failure — as required by the corrected protocol
-§3–5.
+Executable multi-path probe on a **trained LSTM** (adding problem) with full
+controls: `scripts/research/rupture_ord2_trained_lstm_probe.py`  
+Doc: `rupture-ord2-trained-lstm_2026-07-25.md`  
+Verdict on CI defaults: **`ORD2_TRAINED_NO_SIGNATURE`** (init + shape reject
+annihilation; scramble alone would false-positive).
+
+Remaining: heavier runs / S4; link alignment to long-sequence failure modes
+(protocol §5).
 
 ## 6. AI disclosure
 
