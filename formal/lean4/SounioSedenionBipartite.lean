@@ -2,18 +2,30 @@
   SounioSedenionBipartite — K-odd / K-even bipartiteness of integer
   sedenion ZD-surgery unit-distance graphs.
 
-  STATUS (2026-08-16): INCOMPLETE FORMALIZATION, not a theorem file.
-  `twistedNormSq` is implemented, Theorem 3.1 (same-K odd-cycle ban) IS
-  proved, and obligation 1 of Theorem 3.2 is proved (‖d·p‖² = 2K + 2·cross,
-  so an edge forces K + cross = 1). Still `sorry`: `k_even_no_edges` and
-  `sedenion_zd_surgery_bipartite`. The bipartiteness / χ=2 headline does
-  NOT follow from what is proved here — do not cite this file for it.
+  STATUS (2026-08-16): both paper theorems are PROVED; the assembly is not.
+  Proved, Mathlib-free, kernel-checked, no `native_decide`:
+    · `twistedNormSq` — implemented (was an unimplemented definition);
+    · Theorem 3.1 `k_odd_no_odd_cycle` — same-K odd chains cannot close;
+    · Theorem 3.2 `k_even_no_edges` — even K admits no edge at all,
+      via ‖d·p‖² = 2K + 2·cross with cross always even.
+  Still `sorry`: ONE declaration, `sedenion_zd_surgery_bipartite`, the
+  graph-level assembly. It additionally needs the mixed-odd-K refinement
+  (Theorem 3.1 is same-K) and a telescoping identity on a closed walk.
+  So the χ=2 headline does NOT yet follow from this file — the algebra is
+  done, the graph argument is not. See also the SCOPE note below.
 
-  SCOPE — the main statement is monochromatic in `p`. It fixes one
-  `ZDPrim` and forbids odd cycles for that surgery alone. Bipartiteness
-  of the UNION graph over all 84 primitives does not follow: a union of
-  bipartite graphs need not be bipartite. If the intended unit-distance
-  graph admits any prim on any edge, that is a separate (open) statement.
+  SCOPE — two narrowings, both deliberate, neither yet lifted.
+  (a) The main statement is monochromatic in `p`: it fixes one `ZDPrim`
+      and forbids odd cycles for that surgery alone. Bipartiteness of the
+      UNION graph over all 84 primitives does not follow, since a union of
+      bipartite graphs need not be bipartite. If the intended unit-distance
+      graph admits any prim on any edge, that is a separate open statement.
+  (b) Its edge hypothesis is `zdEdge ∧ ∃ K, isKDiff K (u − v)`, i.e. only
+      differences with unit coordinates and an exact support. The full
+      `zdEdge` graph over unrestricted `SedVec` — any difference at all
+      with ‖d·p‖² = 2 — is NOT covered. Theorems 3.1 and 3.2 both assume
+      `isKDiff`, so this is a genuine restriction of the graph, not just
+      of the proof.
 
   Mathlib-free. No `sorry` in `twistedNormSq`: that was an unimplemented
   definition, not an unproved lemma. The formula is the Cayley–Dickson
@@ -39,7 +51,7 @@
   zero-edge rows as evidence about supports, not as a proof over `isKDiff`.
   Falsifier owed: exhibit the reduction, or a signed even-K counterexample.
     K=1: always-edge (hypercube); bipartite by coord-sum parity
-    K=2: 0 edges (even-K parity-of-coincidences; Lean: still `sorry`)
+    K=2: 0 edges (even-K parity-of-coincidences; now PROVED, Thm 3.2)
     K=3: edges exist; bipartite by Theorem 3.1 (same-K odd cycle),
          not by triangle-freeness (C₅ is a counterexample to that arrow)
     K=4: 0 edges — C(16,4)=1820 × 84 = 152,880 support×prim checks
@@ -655,27 +667,181 @@ theorem twistedNormSq_expand (d : SedVec) (p : ZDPrim) :
     (fun j => 2 * (coeffA d p j * coeffB d p j))
   rw [hsplit, foldl_add_split, foldl_smul_split]
 
+/-! ### Obligations 2 and 3 — the coincidence involution and cross parity -/
+
+theorem sedSigma_pm (a b : Nat) : sedSigma a b = 1 ∨ sedSigma a b = -1 :=
+  cdSigma_pm 4 a b
+
+theorem iSum_mod2_congr (l : List Nat) (f g : Nat → Int)
+    (h : ∀ a, a ∈ l → f a % 2 = g a % 2) : iSum l f % 2 = iSum l g % 2 := by
+  induction l with
+  | nil => rfl
+  | cons x l ih =>
+    rw [iSum_cons, iSum_cons]
+    have hx := h x (by simp)
+    have hr := ih (fun a ha => h a (by simp [ha]))
+    omega
+
+theorem xor_undo (a b : Nat) : (a ^^^ b) ^^^ b = a := by
+  rw [Nat.xor_assoc, Nat.xor_self, Nat.xor_zero]
+
+theorem xor_mid (a b : Nat) : (a ^^^ b) ^^^ a = b := by
+  rw [Nat.xor_comm a b, Nat.xor_assoc, Nat.xor_self, Nat.xor_zero]
+
+/-- The surgery displacement `t = lo ⊕ hi`; the coincidence involution is `j ↦ j⊕t`. -/
+def zdT (p : ZDPrim) : Nat := p.lo ^^^ p.hi
+
+theorem zdT_ne_zero (p : ZDPrim) : zdT p ≠ 0 := by
+  intro h
+  apply p.lo_ne_hi
+  have hu := xor_undo p.lo p.hi
+  unfold zdT at h
+  rw [h, Nat.zero_xor] at hu
+  exact hu.symm
+
+theorem zdT_lt_16 (p : ZDPrim) : zdT p < 16 :=
+  xor_lt_16 p.lo_lt_16 p.hi_lt_16
+
+theorem xor_ne_self {t : Nat} (ht : t ≠ 0) (j : Nat) : j ^^^ t ≠ j := by
+  intro hc
+  apply ht
+  have h2 : (j ^^^ t) ^^^ j = t := by
+    rw [Nat.xor_comm j t]
+    exact xor_undo t j
+  rw [hc, Nat.xor_self] at h2
+  exact h2.symm
+
+theorem nSum_perm {l₁ l₂ : List Nat} (f : Nat → Nat) (h : List.Perm l₁ l₂) :
+    nSum l₁ f = nSum l₂ f := by
+  induction h with
+  | nil => rfl
+  | cons x _ ih => rw [nSum_cons, nSum_cons, ih]
+  | swap x y l => rw [nSum_cons, nSum_cons, nSum_cons, nSum_cons]; omega
+  | trans _ _ ih₁ ih₂ => rw [ih₁, ih₂]
+
+theorem nSum_map (l : List Nat) (g f : Nat → Nat) :
+    nSum (l.map g) f = nSum l (fun i => f (g i)) := by
+  induction l with
+  | nil => rfl
+  | cons x l ih => rw [List.map_cons, nSum_cons, nSum_cons, ih]
+
+theorem nSum_reindex (l : List Nat) (g f : Nat → Nat)
+    (hp : List.Perm (l.map g) l) :
+    nSum l (fun j => f (g j)) = nSum l f := by
+  rw [← nSum_map l g f]
+  exact nSum_perm f hp
+
+/-- The predicate `coinCount` filters on. -/
+def coincides (d : SedVec) (p : ZDPrim) (j : Nat) : Bool :=
+  nzB (d (j ^^^ p.lo)) && nzB (d (j ^^^ p.hi))
+
+theorem coinCount_as_nSum (d : SedVec) (p : ZDPrim) :
+    coinCount d p = nSum (List.range 16) (fun j => if coincides d p j then 1 else 0) := by
+  rw [coinCount, filter_length_nSum]
+  rfl
+
+/-- The involution swaps the two coordinates the predicate looks at,
+    so the coincidence set is closed under it. -/
+theorem coincides_swap (d : SedVec) (p : ZDPrim) (j : Nat) :
+    coincides d p (j ^^^ zdT p) = coincides d p j := by
+  have h1 : (j ^^^ zdT p) ^^^ p.lo = j ^^^ p.hi := by
+    unfold zdT
+    rw [Nat.xor_assoc, xor_mid p.lo p.hi]
+  have h2 : (j ^^^ zdT p) ^^^ p.hi = j ^^^ p.lo := by
+    unfold zdT
+    rw [Nat.xor_assoc, xor_undo p.lo p.hi]
+  unfold coincides
+  rw [h1, h2, Bool.and_comm]
+
+/-- Coincidences on the low side of the involution. -/
+def coinLo (d : SedVec) (p : ZDPrim) (j : Nat) : Nat :=
+  if decide (j < j ^^^ zdT p) && coincides d p j then 1 else 0
+
+/-- Coincidences on the high side of the involution. -/
+def coinHi (d : SedVec) (p : ZDPrim) (j : Nat) : Nat :=
+  if decide (j ^^^ zdT p < j) && coincides d p j then 1 else 0
+
+/-- Obligation 2. The involution `j ↦ j⊕t` is fixed-point-free (`t ≠ 0`) and
+    preserves the coincidence predicate, so it splits the coincidence set into
+    two equinumerous halves. Sorting by `j < j⊕t` versus `j⊕t < j` gives the
+    split without needing a bit-position argument. -/
+theorem coinCount_even (d : SedVec) (p : ZDPrim) : coinCount d p % 2 = 0 := by
+  have hsplit : coinCount d p
+      = nSum (List.range 16) (coinLo d p) + nSum (List.range 16) (coinHi d p) := by
+    rw [coinCount_as_nSum, ← nSum_add]
+    refine nSum_pointwise _ _ _ (fun j _ => ?_)
+    have hne : j ^^^ zdT p ≠ j := xor_ne_self (zdT_ne_zero p) j
+    cases hc : coincides d p j
+    · simp [coinLo, coinHi, hc]
+    · rcases Nat.lt_or_ge j (j ^^^ zdT p) with h | h
+      · have h2 : ¬ (j ^^^ zdT p < j) := by omega
+        simp [coinLo, coinHi, hc, h, h2]
+      · have h1 : j ^^^ zdT p < j := by omega
+        have h2 : ¬ (j < j ^^^ zdT p) := by omega
+        simp [coinLo, coinHi, hc, h1, h2]
+  have hpt : ∀ j, coinLo d p j = coinHi d p (j ^^^ zdT p) := by
+    intro j
+    unfold coinLo coinHi
+    rw [xor_undo j (zdT p), coincides_swap d p j]
+  have hswap : nSum (List.range 16) (coinLo d p) = nSum (List.range 16) (coinHi d p) :=
+    calc nSum (List.range 16) (coinLo d p)
+        = nSum (List.range 16) (fun j => coinHi d p (j ^^^ zdT p)) :=
+          nSum_pointwise _ _ _ (fun j _ => hpt j)
+      _ = nSum (List.range 16) (coinHi d p) :=
+          nSum_reindex _ _ _ (perm_range_xor (zdT p) (zdT_lt_16 p))
+  rw [hsplit, hswap]
+  omega
+
+/-- Obligation 3. Every cross term is `0` or `±1`, and it is nonzero exactly on
+    a coincidence, so the cross sum and the coincidence count agree mod 2. -/
+theorem cross_mod_two (K : Nat) (d : SedVec) (p : ZDPrim) (hd : isKDiff K d) :
+    iSum (List.range 16) (fun j => coeffA d p j * coeffB d p j) % 2 = 0 := by
+  have hterm : ∀ j, j ∈ List.range 16 →
+      (coeffA d p j * coeffB d p j) % 2
+        = ((if coincides d p j then 1 else 0 : Nat) : Int) % 2 := by
+    intro j hj
+    have hj16 : j < 16 := List.mem_range.mp hj
+    have hlo16 : j ^^^ p.lo < 16 := xor_lt_16 hj16 p.lo_lt_16
+    have hhi16 : j ^^^ p.hi < 16 := xor_lt_16 hj16 p.hi_lt_16
+    have hul := hd.2.1 _ hlo16
+    have huh := hd.2.1 _ hhi16
+    have hsl := sedSigma_pm (j ^^^ p.lo) p.lo
+    have hsh := sedSigma_pm (j ^^^ p.hi) p.hi
+    have hps := primSign_pm p
+    unfold coeffA coeffB coincides nzB
+    rcases hul with hl | hl | hl <;> rcases huh with hh | hh | hh <;>
+      rcases hsl with sl | sl <;> rcases hsh with sh | sh <;>
+      rcases hps with ps | ps <;>
+      simp [hl, hh, sl, sh, ps]
+  rw [iSum_mod2_congr _ _ _ hterm, iSum_ofNat, ← coinCount_as_nSum]
+  have := coinCount_even d p
+  omega
+
 /-- Paper Theorem 3.2.
 
-    Closed so far: `twistedNormSq_expand` plus `coeffA_sq` / `coeffB_sq` /
-    `cdSq` give ‖d·p‖² = Σ d(j⊕lo)² + Σ d(j⊕hi)² + 2·cross, and
-    `sumA_sq_eq_K` / `sumB_sq_eq_K` now identify BOTH square sums with `K`.
-    So ‖d·p‖² = 2K + 2·cross, and an edge forces `K + cross = 1`.
+    PROVED. All three obligations are discharged, Mathlib-free:
 
-    Obligation 1 (the former `whnf` blow-up) is CLOSED. The fix was to prove
-    permutation invariance by induction on the `List.Perm` derivation
-    (`iSum_perm`) rather than on the list, so `List.range 16` is never
-    destructed; `iSum_reindex` then transports along `perm_range_xor`.
+    1. `twistedNormSq_expand` with `sumA_sq_eq_K` / `sumB_sq_eq_K` gives
+       ‖d·p‖² = 2K + 2·cross, so an edge forces `K + cross = 1`. The former
+       `whnf` blow-up here was beaten by proving permutation invariance on the
+       `List.Perm` DERIVATION (`iSum_perm`), never destructing the list, and
+       transporting along `perm_range_xor` via `iSum_reindex`.
+    2. `coinCount_even`: the involution `j ↦ j⊕(lo⊕hi)` is fixed-point-free
+       (`lo ≠ hi`) and preserves the coincidence predicate, so sorting by
+       `j < j⊕t` versus `j⊕t < j` splits the coincidence set into two halves
+       that `nSum_reindex` shows are equinumerous.
+    3. `cross_mod_two`: each cross term is `0` or `±1`, nonzero exactly on a
+       coincidence, so cross ≡ coinCount ≡ 0 (mod 2).
 
-    Remaining Mathlib-free debt:
-    2. `coinCount` is even (involution `j ↦ j⊕(lo⊕hi)`, `lo ≠ hi`);
-    3. `cross ≡ coinCount (mod 2)` (coincidence ⇒ ±1, else 0).
-    Then cross even and `K + cross = 1` force K odd, i.e. no even-K edge.
-    A `native_decide` sweep over fixed even `K ∈ {2,4,6}` would only
-    re-check the Sounio census and is refused for this ∀K statement. -/
+    Cross even plus `K + cross = 1` forces K odd. No `native_decide`: the
+    statement is universally quantified in K and a fixed-K sweep would only
+    re-check the Sounio census. -/
 theorem k_even_no_edges (K : Nat) (hK : K % 2 = 0) (d : SedVec) (p : ZDPrim)
     (hd : isKDiff K d) : twistedNormSq d p ≠ 2 := by
-  sorry
+  intro hEq
+  rw [twistedNormSq_expand, sumA_sq_eq_K K d p hd, sumB_sq_eq_K K d p hd] at hEq
+  have hc := cross_mod_two K d p hd
+  omega
 
 /-! ## §7. Main theorem — no odd cycle in the integer ZD-surgery graph
 
@@ -685,10 +851,16 @@ theorem k_even_no_edges (K : Nat) (hK : K % 2 = 0) (d : SedVec) (p : ZDPrim)
     Theorem 3.1 (or the mixed-K refinement: `Σ K_e` is odd yet equals an
     even hit-count).
 
-    Obstruction: depends on `k_even_no_edges` plus the telescoping identity
+    Obstruction: `k_even_no_edges` is now available, so every edge-K is odd.
+    What is missing is the telescoping identity
       Σ_i (cycle i − cycle (i+1 mod n)) = 0
-    on a closed walk. That identity is list arithmetic, not missing
-    sedenion algebra. -/
+    on a closed walk, and the wiring of the mixed-K case. Note the mixed
+    case does NOT need a new algebraic idea: the hit-count parity argument
+    of Theorem 3.1 already works for heterogeneous odd `K_i`, because it
+    only ever uses that `Σ_i K_i` is odd. Theorem 3.1 is stated for a
+    single shared K, so it needs restating, not reproving.
+
+    This is list/graph arithmetic, not missing sedenion algebra. -/
 theorem sedenion_zd_surgery_bipartite (p : ZDPrim) :
     ∀ (n : Nat) (hn : n % 2 = 1) (cycle : Nat → SedVec),
       (∀ i, i < n →
