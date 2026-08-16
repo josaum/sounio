@@ -3,10 +3,11 @@
   sedenion ZD-surgery unit-distance graphs.
 
   STATUS (2026-08-16): INCOMPLETE FORMALIZATION, not a theorem file.
-  `twistedNormSq` is implemented and Theorem 3.1 is proved, but BOTH
-  `k_even_no_edges` and `sedenion_zd_surgery_bipartite` are still `sorry`.
-  The bipartiteness / χ=2 headline rests on the numerical census below,
-  NOT on anything proved here. Do not cite this file for that claim.
+  `twistedNormSq` is implemented, Theorem 3.1 (same-K odd-cycle ban) IS
+  proved, and obligation 1 of Theorem 3.2 is proved (‖d·p‖² = 2K + 2·cross,
+  so an edge forces K + cross = 1). Still `sorry`: `k_even_no_edges` and
+  `sedenion_zd_surgery_bipartite`. The bipartiteness / χ=2 headline does
+  NOT follow from what is proved here — do not cite this file for it.
 
   SCOPE — the main statement is monochromatic in `p`. It fixes one
   `ZDPrim` and forbids odd cycles for that surgery alone. Bipartiteness
@@ -28,9 +29,15 @@
   `SounioSeamFlip.cdSigma` / `SounioCayleyDickson.cdSigma` / compiler
   `cd_sigma_ct`).
 
-  SOUNIO CENSUS (2026-05-27; support × 84 prims, not 2^K sign patterns —
-  squares make global sign irrelevant; remaining signs are a parity
-  reduction, not a raw enumeration):
+  SOUNIO CENSUS (2026-05-27). UNVERIFIED SIGN REDUCTION — read before
+  quoting. The census enumerates supports × 84 prims, NOT the 2^K signed
+  patterns per support. A global sign flip is indeed harmless (squares),
+  but `cross = Σ_j A_j·B_j` depends on the RELATIVE signs of the live
+  coordinates, so unsigned supports do not by themselves cover every
+  `isKDiff`. The claimed parity reduction closing that gap is asserted
+  externally and is neither stated nor checked in this file; treat the
+  zero-edge rows as evidence about supports, not as a proof over `isKDiff`.
+  Falsifier owed: exhibit the reduction, or a signed even-K counterexample.
     K=1: always-edge (hypercube); bipartite by coord-sum parity
     K=2: 0 edges (even-K parity-of-coincidences; Lean: still `sorry`)
     K=3: edges exist; bipartite by Theorem 3.1 (same-K odd cycle),
@@ -268,6 +275,43 @@ theorem nSum_cons (i : Nat) (l : List Nat) (f : Nat → Nat) :
   exact foldl_add_init_nat l f (f i)
 
 theorem nSum_nil (f : Nat → Nat) : nSum [] f = 0 := rfl
+
+theorem iSum_nil (f : Nat → Int) : iSum [] f = 0 := rfl
+
+theorem iSum_congr (l : List Nat) (f g : Nat → Int) (h : ∀ a, a ∈ l → f a = g a) :
+    iSum l f = iSum l g :=
+  foldl_add_pointwise l f g 0 h
+
+/-- Permutation invariance of `iSum`, by induction on the `List.Perm`
+    DERIVATION rather than on the list.  That is the whole point: the list is
+    never destructed, so a concrete `List.range 16` stays opaque and the `whnf`
+    blow-up that killed the earlier `sumA_sq_eq_K` attempt cannot arise. -/
+theorem iSum_perm {l₁ l₂ : List Nat} (f : Nat → Int) (h : List.Perm l₁ l₂) :
+    iSum l₁ f = iSum l₂ f := by
+  induction h with
+  | nil => rfl
+  | cons x _ ih => rw [iSum_cons, iSum_cons, ih]
+  | swap x y l => rw [iSum_cons, iSum_cons, iSum_cons, iSum_cons]; omega
+  | trans _ _ ih₁ ih₂ => rw [ih₁, ih₂]
+
+theorem iSum_map (l : List Nat) (g : Nat → Nat) (f : Nat → Int) :
+    iSum (l.map g) f = iSum l (fun i => f (g i)) := by
+  induction l with
+  | nil => rfl
+  | cons x l ih => rw [List.map_cons, iSum_cons, iSum_cons, ih]
+
+/-- Re-index a sum along `g` whenever `g` permutes the index list. -/
+theorem iSum_reindex (l : List Nat) (g : Nat → Nat) (f : Nat → Int)
+    (hp : List.Perm (l.map g) l) :
+    iSum l (fun j => f (g j)) = iSum l f := by
+  rw [← iSum_map l g f]
+  exact iSum_perm f hp
+
+theorem iSum_ofNat (l : List Nat) (f : Nat → Nat) :
+    iSum l (fun i => (f i : Int)) = (nSum l f : Int) := by
+  induction l with
+  | nil => rfl
+  | cons x l ih => rw [iSum_cons, nSum_cons, ih]; omega
 
 theorem nSum_add (l : List Nat) (f g : Nat → Nat) :
     nSum l (fun x => f x + g x) = nSum l f + nSum l g := by
@@ -555,6 +599,37 @@ theorem coeffB_sq (d : SedVec) (p : ZDPrim) (j : Nat) :
     _ = 1 * (d (j ^^^ p.hi) * d (j ^^^ p.hi)) * 1 := by rw [hp, hs]
     _ = d (j ^^^ p.hi) * d (j ^^^ p.hi) := by simp
 
+/-- For unit coordinates the square-sum is exactly the support count. -/
+theorem sum_sq_eq_suppCount (d : SedVec) (hu : ∀ i, i < 16 → isUnitCoord (d i)) :
+    iSum (List.range 16) (fun j => d j * d j) = (suppCount d : Int) := by
+  have hpt : ∀ a, a ∈ List.range 16 →
+      d a * d a = ((if nzB (d a) then 1 else 0 : Nat) : Int) := by
+    intro a ha
+    have ha16 : a < 16 := List.mem_range.mp ha
+    rw [unit_sq (hu a ha16)]
+    by_cases h : d a = 0 <;> simp [h, nzB]
+  rw [iSum_congr _ _ _ hpt, iSum_ofNat, suppCount, filter_length_nSum]
+
+/-- Obligation 1 of Theorem 3.2, `lo` half: the A-square sum is `K`. -/
+theorem sumA_sq_eq_K (K : Nat) (d : SedVec) (p : ZDPrim) (hd : isKDiff K d) :
+    iSum (List.range 16) (fun j => coeffA d p j * coeffA d p j) = (K : Int) := by
+  have hfun : (fun j => coeffA d p j * coeffA d p j)
+      = (fun j => d (j ^^^ p.lo) * d (j ^^^ p.lo)) := funext (fun j => coeffA_sq d p j)
+  rw [hfun,
+    iSum_reindex (List.range 16) (fun j => j ^^^ p.lo) (fun z => d z * d z)
+      (perm_range_xor p.lo p.lo_lt_16),
+    sum_sq_eq_suppCount d hd.2.1, hd.1]
+
+/-- Obligation 1 of Theorem 3.2, `hi` half: the B-square sum is also `K`. -/
+theorem sumB_sq_eq_K (K : Nat) (d : SedVec) (p : ZDPrim) (hd : isKDiff K d) :
+    iSum (List.range 16) (fun j => coeffB d p j * coeffB d p j) = (K : Int) := by
+  have hfun : (fun j => coeffB d p j * coeffB d p j)
+      = (fun j => d (j ^^^ p.hi) * d (j ^^^ p.hi)) := funext (fun j => coeffB_sq d p j)
+  rw [hfun,
+    iSum_reindex (List.range 16) (fun j => j ^^^ p.hi) (fun z => d z * d z)
+      (perm_range_xor p.hi p.hi_lt_16),
+    sum_sq_eq_suppCount d hd.2.1, hd.1]
+
 theorem twistedNormSq_expand (d : SedVec) (p : ZDPrim) :
     twistedNormSq d p
       = iSum (List.range 16) (fun j => coeffA d p j * coeffA d p j)
@@ -583,13 +658,19 @@ theorem twistedNormSq_expand (d : SedVec) (p : ZDPrim) :
 /-- Paper Theorem 3.2.
 
     Closed so far: `twistedNormSq_expand` plus `coeffA_sq` / `coeffB_sq` /
-    `cdSq` give ‖d·p‖² = Σ d(j⊕lo)² + Σ d(j⊕hi)² + 2·cross.
+    `cdSq` give ‖d·p‖² = Σ d(j⊕lo)² + Σ d(j⊕hi)² + 2·cross, and
+    `sumA_sq_eq_K` / `sumB_sq_eq_K` now identify BOTH square sums with `K`.
+    So ‖d·p‖² = 2K + 2·cross, and an edge forces `K + cross = 1`.
+
+    Obligation 1 (the former `whnf` blow-up) is CLOSED. The fix was to prove
+    permutation invariance by induction on the `List.Perm` derivation
+    (`iSum_perm`) rather than on the list, so `List.range 16` is never
+    destructed; `iSum_reindex` then transports along `perm_range_xor`.
+
     Remaining Mathlib-free debt:
-    1. identify both square sums with `K` via `perm_range_xor` without
-       letting `List.range 16` unfold under `whnf` (that path timed out);
     2. `coinCount` is even (involution `j ↦ j⊕(lo⊕hi)`, `lo ≠ hi`);
     3. `cross ≡ coinCount (mod 2)` (coincidence ⇒ ±1, else 0).
-    Then K even and cross even imply ‖d·p‖² ≠ 2.
+    Then cross even and `K + cross = 1` force K odd, i.e. no even-K edge.
     A `native_decide` sweep over fixed even `K ∈ {2,4,6}` would only
     re-check the Sounio census and is refused for this ∀K statement. -/
 theorem k_even_no_edges (K : Nat) (hK : K % 2 = 0) (d : SedVec) (p : ZDPrim)
