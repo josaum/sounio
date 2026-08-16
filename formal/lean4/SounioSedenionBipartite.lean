@@ -2,17 +2,22 @@
   SounioSedenionBipartite — K-odd / K-even bipartiteness of integer
   sedenion ZD-surgery unit-distance graphs.
 
-  STATUS (2026-08-16): both paper theorems are PROVED; the assembly is not.
-  Proved, Mathlib-free, kernel-checked, no `native_decide`:
-    · `twistedNormSq` — implemented (was an unimplemented definition);
+  STATUS (2026-08-16): NO `sorry`. Every declaration is proved, Mathlib-free
+  and kernel-checked under leanprover/lean4:v4.33.0, with no `native_decide`.
+  Axioms are the three standard ones only (`propext`, `Classical.choice`,
+  `Quot.sound`); `#print axioms sedenion_zd_surgery_bipartite` shows no
+  `sorryAx`.
+    · `twistedNormSq` — implemented (it was an unimplemented definition);
     · Theorem 3.1 `k_odd_no_odd_cycle` — same-K odd chains cannot close;
-    · Theorem 3.2 `k_even_no_edges` — even K admits no edge at all,
-      via ‖d·p‖² = 2K + 2·cross with cross always even.
-  Still `sorry`: ONE declaration, `sedenion_zd_surgery_bipartite`, the
-  graph-level assembly. It additionally needs the mixed-odd-K refinement
-  (Theorem 3.1 is same-K) and a telescoping identity on a closed walk.
-  So the χ=2 headline does NOT yet follow from this file — the algebra is
-  done, the graph argument is not. See also the SCOPE note below.
+    · Theorem 3.2 `k_even_no_edges` — even K admits no edge at all, via
+      ‖d·p‖² = 2K + 2·cross with cross always even;
+    · `sedenion_zd_surgery_bipartite` — the assembly: no odd closed walk.
+
+  READ THE SCOPE NOTE BEFORE QUOTING THIS. What is proved is the absence of
+  odd cycles for ONE fixed surgery `p`, over edges restricted to `isKDiff`
+  differences. That is bipartiteness of that particular graph, and it is NOT
+  the same as the χ=2 headline for the union over all 84 primitives. The
+  proof is complete; the statement is narrower than the paper's claim.
 
   SCOPE — two narrowings, both deliberate, neither yet lifted.
   (a) The main statement is monochromatic in `p`: it fixes one `ZDPrim`
@@ -27,8 +32,8 @@
       `isKDiff`, so this is a genuine restriction of the graph, not just
       of the proof.
 
-  Mathlib-free. No `sorry` in `twistedNormSq`: that was an unimplemented
-  definition, not an unproved lemma. The formula is the Cayley–Dickson
+  Mathlib-free. `twistedNormSq` was originally an unimplemented definition,
+  not an unproved lemma. The formula is the Cayley–Dickson
   right product against a primitive two-support ZD element
     p = e_lo ± e_hi,
   matching `twCoeff` / `twNormSq` in `SounioErdosUnitDistance.lean` and
@@ -50,6 +55,9 @@
   externally and is neither stated nor checked in this file; treat the
   zero-edge rows as evidence about supports, not as a proof over `isKDiff`.
   Falsifier owed: exhibit the reduction, or a signed even-K counterexample.
+  NOTE this debt is the census's, not the proofs'. Theorem 3.2 and the main
+  theorem quantify over ALL sign patterns allowed by `isKDiff`, so they are
+  strictly stronger than the census rows and do not rest on them.
     K=1: always-edge (hypercube); bipartite by coord-sum parity
     K=2: 0 edges (even-K parity-of-coincidences; now PROVED, Thm 3.2)
     K=3: edges exist; bipartite by Theorem 3.1 (same-K odd cycle),
@@ -843,6 +851,64 @@ theorem k_even_no_edges (K : Nat) (hK : K % 2 = 0) (d : SedVec) (p : ZDPrim)
   have hc := cross_mod_two K d p hd
   omega
 
+/-! ### §7a. Mixed-K refinement, telescoping, and the assembly -/
+
+/-- Theorem 3.1 does not actually need a shared `K`: the double count only
+    ever uses that `Σ_i K_i` is odd.  This is the same proof, restated. -/
+theorem mixed_odd_no_odd_cycle (n : Nat) (ds : Nat → SedVec) (Ks : Nat → Nat)
+    (hds : ∀ i, i < n → isKDiff (Ks i) (ds i))
+    (hodd : nSum (List.range n) Ks % 2 = 1) :
+    ¬ (∀ j, j < 16 → coordSum ds n j = 0) := by
+  intro hzero
+  have hevenj : ∀ j, j < 16 → coordHits ds n j % 2 = 0 := by
+    intro j hj
+    exact unit_sum_zero_hits_even n (fun i => ds i j)
+      (fun i hi => (hds i hi).2.1 j hj) (hzero j hj)
+  have htot_even : nSum (List.range 16) (fun j => coordHits ds n j) % 2 = 0 :=
+    even_sum_of_evens (List.range 16) (fun j => coordHits ds n j)
+      (fun j hj => hevenj j (List.mem_range.mp hj))
+  have htot_eq : nSum (List.range 16) (fun j => coordHits ds n j)
+      = nSum (List.range n) Ks := by
+    rw [double_count_hits]
+    exact nSum_pointwise _ _ _ (fun i hi => (hds i (List.mem_range.mp hi)).1)
+  rw [htot_eq] at htot_even
+  omega
+
+/-- A sum of odd terms has the parity of the number of terms. -/
+theorem nSum_odd_parity (l : List Nat) (f : Nat → Nat)
+    (h : ∀ x, x ∈ l → f x % 2 = 1) : nSum l f % 2 = l.length % 2 := by
+  induction l with
+  | nil => rfl
+  | cons x l ih =>
+    rw [nSum_cons, List.length_cons]
+    have hx := h x (by simp)
+    have hr := ih (fun y hy => h y (by simp [hy]))
+    omega
+
+/-- Plain telescoping on an initial segment; no modular index yet. -/
+theorem telescope (m : Nat) (g : Nat → Int) :
+    iSum (List.range m) (fun i => g i - g (i + 1)) = g 0 - g m := by
+  induction m with
+  | zero => simp [iSum, range_zero_eq]
+  | succ m ih => rw [iSum_range_succ, ih]; omega
+
+/-- The closed walk sums to zero in every coordinate.  Splitting the last step
+    off turns the modular index into a plain one, so no rotation-permutation
+    of `List.range n` is needed. -/
+theorem closed_walk_coordSum_zero (m : Nat) (cycle : Nat → SedVec) (j : Nat) :
+    coordSum (fun i j => cycle i j - cycle ((i + 1) % (m + 1)) j) (m + 1) j = 0 := by
+  unfold coordSum
+  rw [iSum_range_succ]
+  have hinner : iSum (List.range m)
+      (fun i => cycle i j - cycle ((i + 1) % (m + 1)) j)
+      = iSum (List.range m) (fun i => cycle i j - cycle (i + 1) j) := by
+    refine iSum_congr _ _ _ (fun i hi => ?_)
+    have hi' : i < m := List.mem_range.mp hi
+    rw [Nat.mod_eq_of_lt (by omega)]
+  rw [hinner, telescope]
+  simp only [Nat.mod_self]
+  omega
+
 /-! ## §7. Main theorem — no odd cycle in the integer ZD-surgery graph
 
     Without Mathlib `SimpleGraph`, bipartiteness is the absence of an odd
@@ -851,16 +917,22 @@ theorem k_even_no_edges (K : Nat) (hK : K % 2 = 0) (d : SedVec) (p : ZDPrim)
     Theorem 3.1 (or the mixed-K refinement: `Σ K_e` is odd yet equals an
     even hit-count).
 
-    Obstruction: `k_even_no_edges` is now available, so every edge-K is odd.
-    What is missing is the telescoping identity
-      Σ_i (cycle i − cycle (i+1 mod n)) = 0
-    on a closed walk, and the wiring of the mixed-K case. Note the mixed
-    case does NOT need a new algebraic idea: the hit-count parity argument
-    of Theorem 3.1 already works for heterogeneous odd `K_i`, because it
-    only ever uses that `Σ_i K_i` is odd. Theorem 3.1 is stated for a
-    single shared K, so it needs restating, not reproving.
+    PROVED. Three pieces, all above:
+    · `k_even_no_edges` forces every edge's K to be odd;
+    · `mixed_odd_no_odd_cycle` handles heterogeneous odd `K_i` — it needed
+      no new algebra, only restating Theorem 3.1's double count, which uses
+      nothing about the `K_i` beyond `Σ_i K_i` being odd;
+    · `closed_walk_coordSum_zero` supplies the telescoping. Splitting the
+      last step off with `iSum_range_succ` turns the modular index into a
+      plain one on `List.range m`, so no rotation-permutation of
+      `List.range n` is needed anywhere.
 
-    This is list/graph arithmetic, not missing sedenion algebra. -/
+    `Classical.choose` picks the per-edge `K` from the existential in the
+    hypothesis; that is the only source of `Classical.choice` here.
+
+    NAME WARNING: `sedenion_zd_surgery_bipartite` reads broader than what it
+    says. The statement below is the honest one — a FIXED `p`, and edges
+    restricted to `zdEdge ∧ ∃ K, isKDiff K`. Read the binders, not the name. -/
 theorem sedenion_zd_surgery_bipartite (p : ZDPrim) :
     ∀ (n : Nat) (hn : n % 2 = 1) (cycle : Nat → SedVec),
       (∀ i, i < n →
@@ -868,6 +940,31 @@ theorem sedenion_zd_surgery_bipartite (p : ZDPrim) :
           ∃ K, isKDiff K (fun j => cycle i j - cycle ((i + 1) % n) j)) →
       False := by
   intro n hn cycle hedges
-  sorry
+  obtain ⟨m, rfl⟩ : ∃ m, n = m + 1 := ⟨n - 1, by omega⟩
+  let ds : Nat → SedVec := fun i j => cycle i j - cycle ((i + 1) % (m + 1)) j
+  -- totalise the per-edge support so `Classical.choose` gives a function
+  have hex : ∀ i, ∃ K, i < m + 1 → isKDiff K (ds i) := by
+    intro i
+    if hi : i < m + 1 then
+      obtain ⟨K, hK⟩ := (hedges i hi).2
+      exact ⟨K, fun _ => hK⟩
+    else
+      exact ⟨0, fun h => absurd h hi⟩
+  let Ks : Nat → Nat := fun i => Classical.choose (hex i)
+  have hKs : ∀ i, i < m + 1 → isKDiff (Ks i) (ds i) :=
+    fun i hi => Classical.choose_spec (hex i) hi
+  -- every edge is an odd-K diff, because Theorem 3.2 kills the even ones
+  have hodd_i : ∀ i, i < m + 1 → Ks i % 2 = 1 := by
+    intro i hi
+    have hcases : Ks i % 2 = 0 ∨ Ks i % 2 = 1 := by omega
+    rcases hcases with h0 | h1
+    · exact absurd (hedges i hi).1 (k_even_no_edges (Ks i) h0 (ds i) p (hKs i hi))
+    · exact h1
+  have hsum_odd : nSum (List.range (m + 1)) Ks % 2 = 1 := by
+    rw [nSum_odd_parity _ _ (fun x hx => hodd_i x (List.mem_range.mp hx)),
+      List.length_range]
+    exact hn
+  exact mixed_odd_no_odd_cycle (m + 1) ds Ks hKs hsum_odd
+    (fun j _ => closed_walk_coordSum_zero m cycle j)
 
 end Sounio.SedenionBipartite
