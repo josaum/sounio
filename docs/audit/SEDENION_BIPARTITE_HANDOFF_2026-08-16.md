@@ -1,12 +1,3 @@
-<!-- docs:meta
-topic_id: repo.docs.audit.sedenion-bipartite-handoff-2026-08-16
-authority: repo_only
-audience: users
-last_validated: 2026-03-07
-validated_by: A2
-source_of_truth: docs/governance/topic-registry.v1.json#repo.docs.audit.sedenion-bipartite-handoff-2026-08-16
--->
-
 # Handoff — `formal/lean4/SounioSedenionBipartite.lean`
 
 - **Date:** 2026-08-16
@@ -19,13 +10,27 @@ source_of_truth: docs/governance/topic-registry.v1.json#repo.docs.audit.sedenion
 - **Base commit:** `965b2d3226` (file byte-identical to `origin/main` at start)
 - **Toolchain:** Lean 4.33.0 (`d8b18978322de05a8f3dba51ef03cf5461676c17`), no Mathlib, no Lake
 
-## 0. Reconciling the two `sorry` readings — they do not conflict
+## Result
 
-The founder measured **four** `sorry` at lines **48, 65, 74, 81**. This agent
-reported warnings at **583** and **599**. Both are correct; they describe
-**different states of the same file**. (In the *committed* state the two
-warnings sit at **595** and **611** — a 12-line shift from a status banner
-added to the header after the 583/599 reading was taken. Same two theorems.)
+**All four original `sorry` are closed. The file is `sorry`-free.** It now meets
+the repository's Mathlib-free, no-`sorry` contract, with no `native_decide`.
+
+This halves the repo's real `sorry` debt. The founder's audit found eight real
+`sorry` tactics across 137 Lean files, four of them here. Re-measuring now
+(comments and docstrings stripped) leaves **four**, none in this file:
+
+```
+EpistemicEffects.lean: 1
+SounioDeGreyChi5Real.lean: 1
+SounioGradedModal.lean: 2
+TOTAL real sorry tactics: 4
+```
+
+## 0. Reconciling the two `sorry` readings — they never conflicted
+
+The founder measured four `sorry` at lines **48, 65, 74, 81**. This agent at
+one point reported warnings at **583** and **599**. Both were correct; they
+described **different states of the same file**.
 
 ```
 $ git show HEAD:formal/lean4/SounioSedenionBipartite.lean | grep -n sorry
@@ -34,28 +39,20 @@ $ git show HEAD:formal/lean4/SounioSedenionBipartite.lean | grep -n sorry
 74:  sorry
 81:  sorry
 
-$ git show origin/main:... | sha256sum  ==  git show HEAD:... | sha256sum   → IDENTICAL
+$ git show origin/main:... | sha256sum  ==  git show HEAD:... | sha256sum  → IDENTICAL
 ```
 
-So 48/65/74/81 is the **pre-edit** file, and `HEAD` == `origin/main` for it —
-the founder's measurement and this agent's starting point were the same bytes.
-The 583/599 reading is the **post-edit** working tree. Two further details
-worth stating so nobody re-derives them later:
-
-- The count fell from 4 to 2 because line 48 (`twistedNormSq`) is now an
-  implemented definition and line 65 (Theorem 3.1) is now proved.
-- Lean reports the **declaration header** line, not the `sorry` token. In the
-  committed file the headers are 595/611 and the literal `sorry` tokens are at
-  597/618. Grepping for `sorry` and diffing against Lean's warning positions
-  will show a 2-line and a 7-line offset; that is expected, not drift.
-
-No discrepancy remains to flag.
+`HEAD` and `origin/main` were byte-identical for this file, so the founder's
+measurement and this agent's starting point were the same bytes. 583/599 was
+the working tree mid-edit. Two details worth recording so nobody re-derives
+them: Lean reports the **declaration header** line rather than the `sorry`
+token, and the line numbers moved repeatedly as header notes were added. All of
+it is moot now — there are no `sorry` warnings left to number.
 
 ## 1. What `twistedNormSq` was settled on, and why
 
-Line 48 was an **unimplemented definition**, not an unproved lemma — the three
-lemmas under it rested on something with no computational content, so every one
-of them was vacuous-by-opacity until this was fixed.
+Line 48 was an **unimplemented definition**, not an unproved lemma, so the
+three lemmas under it rested on something with no computational content.
 
 ```lean
 def twCoeff (d : SedVec) (p : ZDPrim) (j : Nat) : Int :=
@@ -70,72 +67,68 @@ Justification, in order of authority:
 
 1. **It is the right Cayley–Dickson product.** For a basis element,
    `(x · e_k)_j = x_{j⊕k} · σ(j⊕k, k)`. A primitive surgery element is
-   `p = e_lo ± e_hi`, so it contributes exactly two such terms, the second
-   carrying `primSign p`. `twistedNormSq` is then `Σ_j (d·p)_j²`.
-2. **It matches the sibling file already in the repo.** `twCoeff` / `twNormSq`
-   in `formal/lean4/SounioErdosUnitDistance.lean` have the same shape; this is
-   deliberately the same definition, not a new one invented here.
+   `p = e_lo ± e_hi`, contributing exactly two such terms, the second carrying
+   `primSign p`. `twistedNormSq` is `Σ_j (d·p)_j²`.
+2. **It matches the sibling file already in the repo** — `twCoeff` / `twNormSq`
+   in `SounioErdosUnitDistance.lean` have the same shape. Deliberately the same
+   definition, not a new one.
 3. **It matches Appendix C** of `papers/sedenion-chromatic-gap/paper.md`.
 4. `σ` is `cdSigma … 4`, the same recursion as `SounioSeamFlip.cdSigma`,
    `SounioCayleyDickson.cdSigma`, and the compiler's `cd_sigma_ct`.
 
-The definition is **computable** — `noncomputable` was dropped, along with the
-`ℤ`/`Z` notation in favour of plain `Int`, to keep the file Mathlib-free.
-
-`zdEdge p u v` is `twistedNormSq (u − v) p = 2`, i.e. `‖p‖² = 2`.
+`noncomputable` was dropped and `ℤ` replaced by `Int` to stay Mathlib-free.
 
 ## 2. Status of the four original `sorry`s
 
-| Original line | Declaration | Status now |
+| Original line | Declaration | Status |
 |---|---|---|
-| 48 | `twistedNormSq` | **CLOSED** — implemented (§1). Kernel-checked. |
-| 65 | Thm 3.1 `k_odd_no_odd_cycle` | **CLOSED** — fully proved, `[propext, Quot.sound]`. |
-| 74 | Thm 3.2 `k_even_no_edges` | **OPEN** — `sorry` at line 597. Partial results landed. |
-| 81 | `sedenion_zd_surgery_bipartite` | **OPEN** — `sorry` at line 618. Blocked on 74. |
+| 48 | `twistedNormSq` | **CLOSED** — implemented (§1) |
+| 65 | Thm 3.1 `k_odd_no_odd_cycle` | **CLOSED** — proved |
+| 74 | Thm 3.2 `k_even_no_edges` | **CLOSED** — proved |
+| 81 | `sedenion_zd_surgery_bipartite` | **CLOSED** — proved |
 
-### Closed: Theorem 3.1 (odd K forbids an odd closed chain)
+### Theorem 3.1 — odd K forbids an odd closed chain
 
-An odd number of odd-K unit diffs cannot sum to zero, componentwise. Proof is a
-double-counting parity argument, entirely Mathlib-free:
+Double-counting parity. Per coordinate, a vanishing sum of `0/±1` values has an
+even number of nonzero terms (`unit_sum_zero_hits_even`); summing over the 16
+coordinates preserves evenness; the same total counted the other way is `n·K`;
+`n` and `K` both odd make it odd. `omega` closes it.
 
-- per coordinate `j`, a sum of `0/±1` values that vanishes has an **even** number
-  of nonzero terms (`unit_sum_zero_hits_even`, via a `n₊ − n₋ = 0` / `n₊ + n₋`
-  split);
-- summing over the 16 coordinates keeps evenness (`even_sum_of_evens`);
-- the same total counted the other way is `n · K` (`double_count_hits` +
-  `nSum_supp_const`);
-- `n` odd and `K` odd make `n · K` odd. `omega` closes it.
+About 25 supporting list/arithmetic lemmas had to be built from scratch
+(`iSum`, `nSum`, `foldl_add_split`, `filter_length_nSum`, …) for want of Mathlib.
 
-Roughly 25 supporting list/arithmetic lemmas had to be built from scratch
-(`iSum`, `nSum`, `foldl_add_split`, `foldl_add_pointwise`, `nSum_pointwise`,
-`filter_length_nSum`, …) because Mathlib is not available.
-
-### Open: Theorem 3.2 (even K forbids `twistedNormSq = 2`)
-
-Landed and kernel-clean: `twistedNormSq_expand` gives
+### Theorem 3.2 — even K admits no edge
 
 ```
-‖d·p‖² = Σ_j A_j² + Σ_j B_j² + 2·Σ_j A_j·B_j
+‖d·p‖² = 2K + 2·cross          so an edge forces  K + cross = 1
+cross ≡ coinCount  (mod 2)     each term is 0 or ±1, nonzero iff coincidence
+coinCount is even              fixed-point-free involution  j ↦ j⊕(lo⊕hi)
 ```
 
-with `coeffA_sq` / `coeffB_sq` / `cdSq` reducing each square to `d(j⊕lo)²` and
-`d(j⊕hi)²` — the signs cancel because `σ² = 1` and `primSign² = 1`.
+`t = lo ⊕ hi` is nonzero because `lo ≠ hi`, and `j ↦ j⊕t` swaps precisely the
+two coordinates the coincidence predicate reads, so it preserves that
+predicate. Sorting the coincidence set by `j < j⊕t` versus `j⊕t < j` splits it
+into two halves that `nSum_reindex` shows are equinumerous, giving `2·N₀`.
 
-Three obligations remain, recorded in the docstring at line 571:
+Sorting by the comparison rather than by a bit position avoids needing any
+lowest-set-bit machinery. Core Lean's `Nat.xor_self` / `xor_assoc` / `xor_comm`
+suffice, via the derived `xor_undo` and `xor_mid`.
 
-1. identify both square sums with `K` via `perm_range_xor`, **without** letting
-   `List.range 16` unfold under `whnf` (see §4 — this is where it timed out);
-2. `coinCount` is even, by the involution `j ↦ j⊕(lo⊕hi)` with `lo ≠ hi`;
-3. `cross ≡ coinCount (mod 2)`, since a coincidence contributes `±1` and
-   everything else `0`.
+### Main theorem — no odd cycle
 
-Then `K` even and `cross` even give `‖d·p‖² ≠ 2`.
+Three parts: `k_even_no_edges` forces every edge's `K` odd;
+`mixed_odd_no_odd_cycle` handles heterogeneous odd `K_i`; and
+`closed_walk_coordSum_zero` supplies the telescoping.
 
-### Open: main theorem
+The mixed-K case needed **no new algebra**. Theorem 3.1's double count never
+uses anything about the `K_i` beyond `Σ_i K_i` being odd, so restating it with
+a `Ks : Nat → Nat` was enough. This was flagged by the Grok review, which
+correctly said the docstring had overstated the remaining gap.
 
-Needs 3.2 plus the telescoping identity `Σ_i (cycle i − cycle (i+1 mod n)) = 0`
-on a closed walk. That is list arithmetic, **not** missing sedenion algebra —
-the algebra for it is already in the file.
+`Classical.choose` extracts the per-edge `K` from the hypothesis's existential,
+after totalising it (`∀ i, ∃ K, i < n → isKDiff K (ds i)`) so that a plain
+`if … then … else` on the decidable `i < n` suffices. That is the only source
+of `Classical.choice` in the assembly.
 
 ## 3. Reproducing this exactly
 
@@ -147,110 +140,153 @@ lean --version        # Lean (version 4.33.0, ... d8b18978322de05a8f3dba51ef03cf
 lean SounioSedenionBipartite.lean; echo "exit=$?"
 ```
 
-Observed, ~1.3 s wall:
+Observed, ~1.6 s wall: `exit=0`, no errors, **no `declaration uses sorry`
+warning**. One cosmetic linter note remains, that the statement's `hn` binder
+name is not referenced inside the statement — it is in the original signature
+and is used in the proof.
 
-```
-SounioSedenionBipartite.lean:595:8: warning: declaration uses `sorry`
-SounioSedenionBipartite.lean:611:8: warning: declaration uses `sorry`
-exit=0
-```
-
-Two warnings, no errors. **This is a real kernel run, not a claim.**
-
-Do not use `elan default stable`. `stable` is a moving ref and has already
-drifted under this project once (fixed by `7cd35ba73c`, moved by `220fe6c388`).
-The pin is `leanprover/lean4:v4.33.0`. Note that
-`/workspace/sounio/formal/lean4/lean-toolchain` still reads `stable` on its
-stale research branch; `origin/main` carries `v4.33.0` and is the one to trust.
+Do not use `elan default stable`. `stable` is a moving ref and has drifted
+under this project once (pinned by `7cd35ba73c`, moved by `220fe6c388`). The
+pin is `leanprover/lean4:v4.33.0`. `/workspace/sounio/formal/lean4/lean-toolchain`
+still reads `stable` on its stale research branch; `origin/main` carries
+`v4.33.0` and is the one to trust.
 
 ### Axiom audit
 
-Append `#print axioms …` before `end Sounio.SedenionBipartite` and re-run:
+Append `#print axioms …` before `end Sounio.SedenionBipartite` and re-run. All
+ten headline results — `sedenion_zd_surgery_bipartite`, `k_odd_no_odd_cycle`,
+`k_even_no_edges`, `mixed_odd_no_odd_cycle`, `closed_walk_coordSum_zero`,
+`telescope`, `coinCount_even`, `cross_mod_two`, `twistedNormSq_expand`,
+`perm_range_xor` — return only:
 
 ```
-k_odd_no_odd_cycle  : [propext, Quot.sound]
-twistedNormSq_expand: [propext, Quot.sound]
-perm_range_xor      : [propext, Classical.choice, Quot.sound]
+[propext, Classical.choice, Quot.sound]
 ```
 
-Standard Lean axioms only. **No `sorryAx` in any proved theorem, and no
-`native_decide` axioms anywhere in the file** — see §4.
+**No `sorryAx`. No `native_decide` axioms.** Several results
+(`k_odd_no_odd_cycle`, `mixed_odd_no_odd_cycle`, `telescope`,
+`closed_walk_coordSum_zero`, `twistedNormSq_expand`) do not even need
+`Classical.choice`.
 
-## 4. What did NOT work — read this before retrying
+## 4. What did NOT work — read this before extending the file
 
-**(a) `native_decide` on `perm_range_xor` — used, then removed.**
-The first working version of `perm_range_xor` (4-bit XOR permutes `{0..15}`)
-discharged its 16 cases with `native_decide`. It compiled, but `#print axioms`
-exposed 16 `perm_range_xor._native.native_decide.ax_1_*` axioms plus
-`Classical.choice`. Even though each case is a *closed* instance — not a
-`native_decide` of the universally quantified graph theorem, which this project
-has explicitly refused — it was still importing the compiler into the trusted
-base for a decision the kernel can make itself. Plain `decide` turns out to
-handle each of the 16 `List.Perm` instances in well under a second, so all 16
-were swapped and the native axioms are gone. **If you add finite case sweeps
-here, try `decide` first; it is fast enough on 16 elements.**
+**(a) The `whnf` timeout, and how it was beaten.** This was the central
+obstruction and it is worth understanding rather than rediscovering. The first
+attempt at `sumA_sq_eq_K` tried to transport `perm_range_xor` across a sum by
+rewriting *inside* a concrete `List.range 16`. The elaborator unfolded the
+range into a 16-element literal and died on a deterministic `whnf` timeout.
 
-**(b) Kernel timeout closing obligation 1 of Theorem 3.2.**
-Two lemmas, `sumA_sq_eq_K` and `sumB_sq_eq_K`, were written to identify
-`Σ_j d(j⊕lo)²` with `K` by transporting `perm_range_xor` across the sum. Both
-died on a **deterministic `whnf` timeout**: the elaborator unfolds
-`List.range 16` into a 16-element literal and the resulting term explodes. They
-were **reverted**, not left broken. Anyone retrying needs a permutation-invariance
-lemma for `iSum` stated so that `List.range 16` stays **opaque** — prove
-`List.Perm l₁ l₂ → iSum l₁ f = iSum l₂ f` generically and apply it, rather than
-rewriting inside a concrete range. This is the single highest-value next step.
+The fix is to never let the list be destructed. `iSum_perm` proves permutation
+invariance by induction on the **`List.Perm` derivation** — its four
+constructors `nil`/`cons`/`swap`/`trans` — so the proof only ever sees
+`iSum_cons` and never the range's contents. `iSum_map` and `iSum_reindex` then
+transport along `perm_range_xor` with the list opaque throughout. The whole
+file elaborates in about 1.6 s.
 
-**(c) `simp` is not enough for the list layer.**
-`iSum_range_succ`, `nplus_nminus_eq_nz`, `iSum_eq_plus_minus`,
-`double_count_hits` and `nSum_supp_const` all resisted `simp` and needed
-explicit `calc` / `rw` / induction, plus two accumulator lemmas
-(`foldl_add_init`, `foldl_add_init_nat`) to move the `foldl` seed out of the way.
-Budget for that; without Mathlib the `foldl` seed is the recurring obstacle.
+**Generalise this if you hit the same wall elsewhere:** prove the structural
+lemma about an arbitrary list, then instantiate at `List.range 16`. Rewriting
+under a concrete range is what explodes.
 
-**(d) A `native_decide` sweep over even `K ∈ {2,4,6}` is refused.**
-It would only re-check the Sounio census (K=4: 152,880 checks; K=6: 672,672;
-both 0 edges) and would swap a `sorry` for a subtler gap on a `∀K` statement.
-Recorded in the docstring so the next agent does not "close" 3.2 that way.
+**(b) `native_decide` on `perm_range_xor` — used, then removed.** The first
+working `perm_range_xor` discharged its 16 cases with `native_decide`. It
+compiled, but `#print axioms` exposed 16
+`perm_range_xor._native.native_decide.ax_1_*` axioms plus `Classical.choice`.
+Each case is a *closed* instance, so this was not the forbidden move of
+`native_decide`-ing a universally quantified theorem, but it still put the
+compiler in the trusted base for a decision the kernel can make. Plain `decide`
+handles each 16-element `List.Perm` instance in well under a second. **Try
+`decide` first for finite case sweeps here.**
 
-## 5. Honest scope of the claim
+**(c) Mathlib tactics that do not exist in core.** `set` and `by_contra` are
+Mathlib, not core, and both failed as `unknown tactic`. Replace `set` with
+top-level `def`s (that is why `coinLo` / `coinHi` exist as definitions rather
+than local bindings) and `by_contra` with an explicit `omega`-generated case
+split. Similarly there is no `push_cast`; `omega` handles `Nat → Int` casts
+directly, which is what `iSum_ofNat` relies on.
 
-- **Kernel-verified:** `twistedNormSq` is well-defined and computable;
-  Theorem 3.1 holds; the `twistedNormSq_expand` decomposition holds.
-- **Not verified:** Theorem 3.2 and the main bipartiteness theorem. Two `sorry`
-  remain. The file is **not** no-sorry-clean and must not be described as such.
-- The `χ=2` bipartiteness statement in the paper and in
-  `.claude/llm_offload_log.md` rests on the **numerical census**, not on this
-  Lean file. The 2026-05-27 offload row for this file was `WAIVED` as a
-  "theorem-STRUCTURE document"; that is now partly obsolete — the structure has
-  real content underneath it, but the headline theorem is still open.
-- Even `K ≥ 8` is not in the census; the `∀K` claim rests on the parity lemma,
-  which is exactly what is still `sorry`.
-- **The main statement is monochromatic in `p`.** It fixes one `ZDPrim` and
-  forbids odd cycles for that surgery alone. A union of bipartite graphs need
-  not be bipartite, so bipartiteness of the union over all 84 primitives does
-  **not** follow even once 3.2 is closed. If the intended unit-distance graph
-  admits any prim on any edge, that is a separate open statement.
+**(d) `dite` needs a `Decidable` instance.** Choosing the per-edge `K` with
+`if h : ∃ K, …` fails to synthesise. Totalise the existential first, then
+branch on the decidable `i < n`.
 
-### LLM-offload math review (mandatory, 2026-08-16)
+**(e) `simp` is not enough for the list layer.** `iSum_range_succ`,
+`nplus_nminus_eq_nz`, `iSum_eq_plus_minus`, `double_count_hits` and
+`nSum_supp_const` all resisted `simp` and needed explicit `calc` / `rw` /
+induction, plus two accumulator lemmas (`foldl_add_init`, `foldl_add_init_nat`)
+to move the `foldl` seed out of the way. Without Mathlib the `foldl` seed is the
+recurring obstacle.
 
-`bin/llm-offload -t math-review -p xai` → Grok 4.5, raw at
-`/tmp/llm-offload-S3pon4/`. Verdict: *"Treat as incomplete formalization +
-limited census, not a theorem."* Confirmed `[OK]`: the census arithmetic
-(`C(16,4)·84 = 152,880`, `C(16,6)·84 = 672,672`, `|ZDPrim| = 84 = (7·7−7)·2`),
-the expansion `‖d·p‖² = 2K + 2·cross`, the Theorem 3.1 proof, and that
-`twistedNormSq` matches the displayed CD right-product formula.
+**(f) `rcases` alternatives must bind uniform names.** Writing
+`rcases h with h0 | h1 | h1` then referring to `h0` and `h1` in a combined
+`simp` fails in every branch that did not bind that name. Use one name.
 
-Three `[FAIL]` findings, all **addressed** by the status/scope banner now at the
-top of the file rather than dismissed:
+**(g) A `native_decide` sweep over even `K ∈ {2,4,6}` was refused throughout.**
+It would only re-check the Sounio census and would swap a `sorry` for a subtler
+gap on a `∀K` statement. It also turned out to be unnecessary.
 
-1. header told a bipartiteness story while two `sorry` remained;
-2. `∀ even K` scope overstated relative to a census that stops at `K=6`;
-3. **the monochromatic-`p` gap above** — this one was genuinely new, not a
-   restatement of the known `sorry`s, and is the most useful thing the review
-   produced. It changes what the main theorem would *mean* even if proved.
+**(h) A rotation-permutation of `List.range n` was never needed.** The obvious
+route to the telescoping identity is to show `i ↦ (i+1) % n` permutes
+`List.range n`, which for general `n` is real work. Splitting the last step off
+with `iSum_range_succ` turns the modular index into a plain one on
+`List.range m`, where `Nat.mod_eq_of_lt` applies pointwise. Cheaper, and it
+avoids a general-`n` permutation proof entirely.
 
-## 6. Next action
+## 5. Honest scope — what this does NOT establish
 
-Prove permutation-invariance of `iSum` with `List.range 16` kept opaque (§4b),
-which unblocks obligation 1 of Theorem 3.2; then the `coinCount` involution
-(obligation 2). The main theorem falls out of 3.2 plus telescoping.
+The proof is complete. **The statement is narrower than the paper's claim**, in
+two ways, both stated in the file header and neither lifted here:
+
+- **(a) Monochromatic in `p`.** The theorem fixes one `ZDPrim` and forbids odd
+  cycles for that surgery alone. Bipartiteness of the **union** graph over all
+  84 primitives does **not** follow — a union of bipartite graphs need not be
+  bipartite. If the intended unit-distance graph admits any prim on any edge,
+  that is a separate open statement.
+- **(b) `isKDiff` edges only.** The edge hypothesis is
+  `zdEdge ∧ ∃ K, isKDiff K (u − v)`, i.e. differences with unit coordinates and
+  an exact support. The full `zdEdge` graph over unrestricted `SedVec` is not
+  covered. Both 3.1 and 3.2 assume `isKDiff`, so this restricts the graph, not
+  just the proof.
+
+The declaration name `sedenion_zd_surgery_bipartite` reads broader than either
+of these. A NAME WARNING now sits directly above it telling readers to read the
+binders. **Do not cite this file for χ=2 of the full unit-distance graph.**
+
+Conversely — and this correction matters — the census sign-reduction debt
+recorded earlier is the **census's** problem, not the proofs'. The census
+enumerates unsigned supports × 84 prims while `cross` depends on the *relative*
+signs of the live coordinates, so the census rows do not by themselves cover
+every `isKDiff`. But Theorem 3.2 and the main theorem quantify over **all** sign
+patterns allowed by `isKDiff`, so they are strictly **stronger** than the census
+rows rather than dependent on them. Earlier wording in this handoff invited the
+opposite reading and has been corrected.
+
+### LLM-offload math reviews (mandatory, all 2026-08-16)
+
+Four `bin/llm-offload -t math-review -p xai` runs against Grok 4.5, one per
+milestone. Raw output in `/tmp/llm-offload-{S3pon4,WVrwhO,0YV2OZ,0tNgK0}/`, all
+logged in `.claude/llm_offload_log.md`. The final run found **no arithmetic
+FAIL**. The reviews earned their keep three times:
+
+1. **The monochromatic-`p` gap** — genuinely new, not a restatement of the
+   known `sorry`s. It changes what the main theorem *means*, and it is why
+   scope note (a) exists.
+2. **The `isKDiff` narrowing** — caught as a silent weakening of the edge
+   relation; scope note (b).
+3. **The mixed-K lead** — the review pointed out that the docstring overstated
+   the remaining gap, since the hit-count parity works unchanged for
+   heterogeneous odd `K_i`. That materially lowered the cost of the final
+   assembly.
+
+## 6. Next actions for whoever picks this up
+
+1. **Lift narrowing (a).** Bipartiteness of the union over all 84 primitives is
+   the actual paper claim and does not follow from the per-`p` result. This is
+   the substantive open mathematics, not a formalisation chore.
+2. **Lift narrowing (b).** Decide whether a `zdEdge` with `‖d·p‖² = 2` forces
+   `isKDiff` on the difference. If it does, prove it and drop the hypothesis;
+   if it does not, the graph in the paper needs restating.
+3. **Settle the census sign reduction**, or retire the census rows in favour of
+   Theorem 3.2, which is strictly stronger over `isKDiff`.
+4. Four real `sorry` remain elsewhere in `formal/lean4`: `EpistemicEffects.lean`
+   (1), `SounioDeGreyChi5Real.lean` (1), `SounioGradedModal.lean` (2). The
+   `iSum_perm` / `iSum_reindex` pattern in §4(a) is reusable if any of them are
+   blocked on the same `whnf` wall.
