@@ -359,6 +359,50 @@ gains lemmas over releases, and a derivation that looked hard once may be two li
 
 ---
 
+## 11. Mathlib-only tactics and their core-only replacements
+
+Every row below was established by running two probes under core 4.33.0, not from
+memory. The **negative** probe puts the tactic in a goal and records the error; a
+Mathlib-only tactic fails with `unknown tactic`. The **positive** probe is the
+replacement, and it lives in `CorePatternsWitnesses.lean` §P11, which compiles clean.
+
+| Mathlib-only | Core-only replacement |
+|---|---|
+| `by_contra h` | `Classical.byContradiction`, or `match` on a decidable split |
+| `set x := e` | a top-level `def`, or `generalize e = x` for a single goal |
+| `linarith` | `omega` (linear `Nat`/`Int` goals) |
+| `nlinarith` | explicit monotonicity, e.g. `Nat.mul_le_mul h h` — `omega` is linear only |
+| `positivity` | `Nat.succ_pos`, `omega`, or the explicit lemma |
+| `ring` | `simp [Nat.mul_add, Nat.mul_comm]` then `omega` |
+| `interval_cases n` | `match` on numeral patterns, catch-all `_ + k => omega` |
+| `norm_num` | `decide` for closed numerals, or `rfl` |
+| `field_simp` | no general replacement; restructure to avoid division |
+
+### The row that was wrong
+
+`push_cast` is **not** Mathlib-only. Neither is `norm_cast`, nor `exact_mod_cast`. The
+`norm_cast` family lives in Lean core and all three run under 4.33.0. The decisive
+evidence is the *kind* of error: a Mathlib-only tactic errors with `unknown tactic`,
+whereas `push_cast` on a goal it cannot finish errors with `unsolved goals`, which means
+it parsed and ran. It also does real work rather than being a no-op — on
+`((b - a : Nat) : Int) = (b : Int) - (a : Int)` with `a ≤ b`, plain `rfl` fails and
+`push_cast [h]; omega` succeeds.
+
+What is actually missing is the Mathlib *lemma names* people reach for alongside it:
+`Nat.cast_add` and `Int.ofNat_add` are both unknown constants. So a session that reaches
+for `push_cast` and hits an error is very likely looking at a missing lemma name, and
+attributing it to the tactic sends the next author down the wrong path.
+
+Worth knowing before reaching for the family at all: **`omega` crosses `Nat → Int` casts
+unaided**, including truncated subtraction (`core_cast_omega`). For linear goals it
+subsumes the whole question.
+
+This row is the argument for the compile-a-witness rule in miniature. Both this author
+and `kimi-cli1` independently recorded `push_cast` as Mathlib-only from experience, and
+both were wrong; the probe took under a second.
+
+---
+
 ## Provenance
 
 Derived from closing the four `sorry` in `SounioSedenionBipartite.lean`

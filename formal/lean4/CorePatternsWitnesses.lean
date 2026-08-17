@@ -350,4 +350,67 @@ theorem rat_div_pos {a b : Rat} (ha : 0 < a) (hb : 0 < b) : 0 < a / b := by
 /-- The concrete instance that comment says it needs. -/
 example {e : Rat} (he : 0 < e) : 0 < e / 2 := rat_div_pos he (by decide)
 
+/-! ## P11. Mathlib-only tactics and their core-only replacements
+
+Each Mathlib-only tactic below was confirmed absent by a negative probe that
+errors with `unknown tactic` under core 4.33.0; the replacements here are the
+positive witnesses. See CORE_PROOF_PATTERNS.md §11 for the table.
+
+Confirmed Mathlib-only: `by_contra`, `set`, `nlinarith`, `linarith`,
+`positivity`, `ring`, `interval_cases`, `norm_num`, `field_simp`.
+
+Confirmed present in core, contrary to a widespread assumption: `push_cast`,
+`norm_cast`, `exact_mod_cast`. What is missing is the Mathlib *lemma names*
+(`Nat.cast_add`, `Int.ofNat_add`), not the tactics. -/
+
+theorem core_by_contra (p : Prop) (h : ¬¬p) : p :=
+  Classical.byContradiction h
+
+theorem core_by_contra_tac (n : Nat) (h : n ≠ 0) : 0 < n := by
+  match n with
+  | 0 => exact absurd rfl h
+  | _ + 1 => omega
+
+/-- Replacement for `set`: a top-level `def`, or `generalize` when the
+abbreviation is only needed for one goal. -/
+def shorthand (a b : Nat) : Nat := a + b
+
+theorem core_set (a b : Nat) : shorthand a b = shorthand b a := by
+  unfold shorthand; omega
+
+theorem core_set_generalize (a b : Nat) : (a + b) + 0 = a + b := by
+  generalize a + b = s
+  omega
+
+theorem core_nlinarith (a b : Nat) (h : a ≤ b) : a * a ≤ b * b :=
+  Nat.mul_le_mul h h
+
+theorem core_linarith (a b c : Nat) (h1 : a ≤ b) (h2 : b ≤ c) : a ≤ c := by omega
+
+theorem core_positivity (x : Nat) : 0 < x + 1 := Nat.succ_pos x
+
+theorem core_ring (a b : Nat) : (a + b) * (a + b) = a*a + 2*(a*b) + b*b := by
+  simp [Nat.mul_add, Nat.mul_comm]
+  omega
+
+theorem core_interval_cases (n : Nat) (h : n < 3) : n = 0 ∨ n = 1 ∨ n = 2 := by
+  match n with
+  | 0 => decide
+  | 1 => decide
+  | 2 => decide
+  | _ + 3 => omega
+
+theorem core_norm_num : (2 : Nat) + 2 = 4 := by decide
+
+/-- `omega` crosses `Nat → Int` unaided, including truncated subtraction. -/
+theorem core_cast_omega (a b : Nat) (h : a ≤ b) :
+    ((b - a : Nat) : Int) = (b : Int) - (a : Int) := by omega
+
+/-- `push_cast` is available in core and does fire here; `rfl` alone fails on
+this goal, so the tactic is doing real work rather than being a no-op. -/
+theorem core_cast_pushcast (a b : Nat) (h : a ≤ b) :
+    ((b - a : Nat) : Int) = (b : Int) - (a : Int) := by
+  push_cast [h]
+  omega
+
 end Sounio.CorePatterns
