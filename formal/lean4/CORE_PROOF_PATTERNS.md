@@ -6,12 +6,15 @@ core-equivalent rows (`by_contra`, `set`, `push_cast`, `ring`, `nlinarith`,
 
 > **Where that table lives, as of 2026-08-17.** It is `formal/lean4/README.md` +
 > `formal/lean4/TACTICS_CORE_WITNESSES.lean`, authored by lane `kimi-cli1` in commit
-> `1fdea6f3bb` on branch `lane/kimi-cli1/formal-core-tactics-20260817`. **That branch
-> has not landed**, so both files are absent from `origin/main` and from this branch,
-> and the references to them below will not resolve yet. This is recorded rather than
-> hidden: if you followed a dead link, that is why. Once the branch lands the links
-> resolve with no edit needed. The two documents were split deliberately (see
-> Provenance) — neither duplicates the other.
+> `1fdea6f3bb`. That lane hit a hard quota wall (reset 2026-08-22) with the branch
+> never pushed, so the commit is rescued onto a clean base in **PR #1772**, message
+> and authorship intact. Until #1772 lands, both files are absent from `origin/main`
+> and from this branch, and the references to them below will not resolve. This is
+> recorded rather than hidden: if you followed a dead link, that is why. The two
+> documents were split deliberately (see Provenance) — neither duplicates the other.
+>
+> One correction crosses the split: that table listed `push_cast` as Mathlib-only,
+> and it is not. See §11 here, and the same correction applied at source in #1772.
 
 This file is the other half: the failures where you already know the tactic exists,
 and the proof still will not go through, because core is missing an entire *family*
@@ -334,7 +337,7 @@ Two things worth acting on.
 `sorry`.** The comment reads "Core Lean 4 lacks `Nat.div_le_div_left`,
 `Nat.pow_le_pow_right`, `Nat.div_le_div_right`, and `Nat.pos_pow_of_pos`. Needs Mathlib
 Nat lemmas." Three of the four exist. `kimi-cli1` independently found two of them and
-has proved that `sorry` on `lane/kimi-cli1/formal-core-tactics-20260817`; this audit
+proved that `sorry`; that fix is in **PR #1772**, which retires the comment. This audit
 adds the third and confirms only `Nat.pos_pow_of_pos` is genuinely missing.
 
 **`SounioRealCauchy.lean:63` names a real absence but draws the wrong conclusion.**
@@ -410,10 +413,10 @@ Derived from closing the four `sorry` in `SounioSedenionBipartite.lean`
 found the expensive way. Longer narrative, including what was tried and reverted, is
 in [`../../docs/audit/SEDENION_BIPARTITE_HANDOFF_2026-08-16.md`](../../docs/audit/SEDENION_BIPARTITE_HANDOFF_2026-08-16.md).
 
-Complementary to `README.md` + `TACTICS_CORE_WITNESSES.lean` (kimi-cli1, lane
-`formal-core-tactics`), which own the tactic-name table. Deliberately no overlap: if
-you are looking up a tactic name, go there; if the tactic exists and the proof still
-will not go through, you are in the right file.
+Complementary to `README.md` + `TACTICS_CORE_WITNESSES.lean` (probes by `kimi-cli1`,
+rescued in PR #1772), which own the tactic-name table. Deliberately no overlap: if you
+are looking up a tactic name, go there; if the tactic exists and the proof still will
+not go through, you are in the right file.
 
 **Adding an entry:** add the witness to `CorePatternsWitnesses.lean` first and check
 it compiles, then write the section. For a negative claim, paste the probe output —
