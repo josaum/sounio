@@ -5950,6 +5950,29 @@
       "related_artifacts": []
     },
     {
+      "topic_id": "repo.docs.audit.wave3-conflicted-pr-triage-2026-08-16",
+      "collection": "repo",
+      "repo_doc_path": "docs/audit/WAVE3_CONFLICTED_PR_TRIAGE_2026-08-16.md",
+      "website_slug": null,
+      "website_paths": {},
+      "audience": "users",
+      "authority": "repo_only",
+      "owner_agent": "A2",
+      "locale_status": {
+        "en": "n/a",
+        "pt": "n/a",
+        "el": "n/a",
+        "zh": "n/a",
+        "ja": "n/a",
+        "es": "n/a"
+      },
+      "validation_commands": [
+        "bash scripts/check_docs_registry.sh",
+        "bash scripts/check_docs_consistency.sh"
+      ],
+      "related_artifacts": []
+    },
+    {
       "topic_id": "repo.docs.audit.windows-assert-a64-parity.ad-hessian-diagonal",
       "collection": "repo",
       "repo_doc_path": "docs/audit/windows_assert_a64_parity/AD_HESSIAN_DIAGONAL.md",
@@ -8942,6 +8965,29 @@
       "topic_id": "repo.docs.governance.docs-conventions",
       "collection": "repo",
       "repo_doc_path": "docs/governance/DOCS_CONVENTIONS.md",
+      "website_slug": null,
+      "website_paths": {},
+      "audience": "users",
+      "authority": "repo_only",
+      "owner_agent": "A2",
+      "locale_status": {
+        "en": "n/a",
+        "pt": "n/a",
+        "el": "n/a",
+        "zh": "n/a",
+        "ja": "n/a",
+        "es": "n/a"
+      },
+      "validation_commands": [
+        "bash scripts/check_docs_registry.sh",
+        "bash scripts/check_docs_consistency.sh"
+      ],
+      "related_artifacts": []
+    },
+    {
+      "topic_id": "repo.docs.governance.squash-then-continue-trap-2026-08-17",
+      "collection": "repo",
+      "repo_doc_path": "docs/governance/SQUASH_THEN_CONTINUE_TRAP_2026-08-17.md",
       "website_slug": null,
       "website_paths": {},
       "audience": "users",
