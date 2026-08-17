@@ -310,6 +310,55 @@ No rotation permutation is needed anywhere.
 
 ---
 
+## 10. Stale "core lacks X" comments — a verified audit
+
+A comment asserting core does not have something is worse than no comment: it is
+trusted, and it justifies deferring work. `kimi-cli1` flagged this failure mode on the
+bus after hitting a false one. Sweeping `formal/lean4/*.lean` for named-absence claims
+and `#check`-ing each name gives:
+
+| Comment | Name | Verdict |
+|---|---|---|
+| `SounioGradedModal.lean:133` | `Nat.div_le_div_left` | **EXISTS** — claim false |
+| `SounioGradedModal.lean:133` | `Nat.pow_le_pow_right` | **EXISTS** — claim false |
+| `SounioGradedModal.lean:133` | `Nat.div_le_div_right` | **EXISTS** — claim false |
+| `SounioGradedModal.lean:133` | `Nat.pos_pow_of_pos` | absent — claim correct |
+| `SounioRealCauchy.lean:63` | `Rat.div_pos` | absent — but see below |
+| `SounioRealOrderAxiomsImpl.lean:20` | `Rat.zero_lt_one` | absent — claim correct |
+| `SounioMultiquadIndep.lean:722` | `Rat.zero_sub` | absent — claim correct |
+| `SounioSqrtFieldReal.lean:22` | `Rat.add_le_add` | absent — claim correct |
+
+Two things worth acting on.
+
+**`SounioGradedModal.lean:133` is three-quarters wrong and sits directly above a
+`sorry`.** The comment reads "Core Lean 4 lacks `Nat.div_le_div_left`,
+`Nat.pow_le_pow_right`, `Nat.div_le_div_right`, and `Nat.pos_pow_of_pos`. Needs Mathlib
+Nat lemmas." Three of the four exist. `kimi-cli1` independently found two of them and
+has proved that `sorry` on `lane/kimi-cli1/formal-core-tactics-20260817`; this audit
+adds the third and confirms only `Nat.pos_pow_of_pos` is genuinely missing.
+
+**`SounioRealCauchy.lean:63` names a real absence but draws the wrong conclusion.**
+`Rat.div_pos` is indeed absent, but the comment goes on to say it "would need to be
+derived from `Rat.mul_pos` + `Rat.inv_pos`, which is non-trivial without
+`ring`/`field_simp` (Mathlib)". Both inputs exist and the derivation is two lines,
+no `ring`, no `field_simp` (witness `rat_div_pos`):
+
+```lean
+theorem rat_div_pos {a b : Rat} (ha : 0 < a) (hb : 0 < b) : 0 < a / b := by
+  rw [Rat.div_def]
+  exact Rat.mul_pos ha (Rat.inv_pos.mpr hb)
+```
+
+So **check the name before believing the comment, and check derivability before
+believing "non-trivial"**. Both halves of an absence claim decay independently: core
+gains lemmas over releases, and a derivation that looked hard once may be two lines.
+
+**Naming trap:** `formal/omega_mathlib/` is an epistemic-domain library
+(`EpistemicPower`, `AccumulatorBounds`, `GlycolysisEpistemic`, …). It is **not**
+`omega`-tactic support and not a Mathlib shim. Do not send an author hunting there.
+
+---
+
 ## Provenance
 
 Derived from closing the four `sorry` in `SounioSedenionBipartite.lean`

@@ -336,4 +336,18 @@ theorem closed_walk_sum_zero (m : Nat) (c : Nat → Int) :
   simp only [Nat.mod_self]
   omega
 
+/-! ## P10. Witnesses falsifying stale "core lacks X" comments
+
+See CORE_PROOF_PATTERNS.md §10 for the audit table. The comment at
+`SounioRealCauchy.lean:63` says deriving `Rat.div_pos` from `Rat.mul_pos`
+and `Rat.inv_pos` is "non-trivial without `ring`/`field_simp` (Mathlib)".
+Both inputs exist in core and the derivation is two lines. -/
+
+theorem rat_div_pos {a b : Rat} (ha : 0 < a) (hb : 0 < b) : 0 < a / b := by
+  rw [Rat.div_def]
+  exact Rat.mul_pos ha (Rat.inv_pos.mpr hb)
+
+/-- The concrete instance that comment says it needs. -/
+example {e : Rat} (he : 0 < e) : 0 < e / 2 := rat_div_pos he (by decide)
+
 end Sounio.CorePatterns
