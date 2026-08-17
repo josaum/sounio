@@ -116,8 +116,36 @@ md5sum    tests/vectors/f128_f256_v0d/arith_hard_*.jsonl
 sha256sum tests/vectors/f128_f256_v0d/arith_hard_*.jsonl
 ```
 
+## f256-only structural traps (2026-08-17)
+
+**File:** `f256_only_traps.jsonl` (28 lines)  
+**Generator:** `gen/f256_only_traps_gen.c` / `gen/run_f256_only_traps.sh`  
+**Analysis:** `F256_ONLY_STRUCTURAL_TRAPS.md`
+
+| Family | Count | Wrong path |
+|---|---:|---|
+| `f128_cascade_mul` | 13 | mul via RNE_f128(a)×RNE_f128(b) then widen |
+| `triple_round_mul` | 13 | mul via f64 then f128 then f256 |
+| `schoolbook_no_sticky` | 2 | product truncated to p=237 with MPFR_RNDZ (no sticky) |
+
+**Provenance per vector:** tool=MPFR, version=4.2.1, rounding_mode=MPFR_RNDN,
+extended_precision_bits=8192, derivation + why_f256_only + invocation in JSON.
+
+**Hashes:**
+
+```
+f256_only_traps.jsonl  28 lines
+  md5    = 2da71f59b5a6b95ec1c334cb9c5e98f0
+  sha256 = 53306a1186491d4fb3660f6c0e82c1908cd7b6a427b97476292d29497de54541
+```
+
+**Headline measured fact:** e.g.  
+`(1+2^-120)^2` in f256: direct low limb `16`, f128-cascade low limb `0` —
+a correct f256 mul must not factor through binary128.
+
 ## What this is not
 
 - Not a softfloat implementation.
 - Not a replacement for minimax random/special op corpora.
 - Not V0-B literal vectors (those remain under `f128_f256/literal_boundary_*.jsonl`).
+

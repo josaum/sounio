@@ -22,6 +22,9 @@ minimax-cli3 / Wave 3). This directory does **not** replace those files.
 | `f128_f256/literal_boundary_*.jsonl` | V0-B literal / double-round traps |
 | `f128_f256/f128.jsonl` / `f256.jsonl` | Broad random+special op coverage |
 | **`f128_f256_v0d/arith_hard_*.jsonl`** | **Structured hard cases for V0-D** |
+| **`f128_f256_v0d/f256_only_traps.jsonl`** | **Traps with no f128-shaped analogue** (cascade via f128, triple-round, 4-limb schoolbook) |
+
+See `F256_ONLY_STRUCTURAL_TRAPS.md` for the structural argument and derivations.
 
 ## Why not only the minimax op corpus?
 
@@ -45,8 +48,12 @@ tests/vectors/f128_f256_v0d/
 ├── GENERATION_RECEIPT.md
 ├── arith_hard_f128.jsonl    # 53 vectors (31 cancellation)
 ├── arith_hard_f256.jsonl    # 50 vectors (30 cancellation)
+├── f256_only_traps.jsonl    # 28 f256-only structural traps
+├── F256_ONLY_STRUCTURAL_TRAPS.md
 └── gen/
     ├── arith_hard_gen.c
+    ├── f256_only_traps_gen.c
+    ├── run_f256_only_traps.sh
     ├── run.sh
     └── .gitignore
 ```
